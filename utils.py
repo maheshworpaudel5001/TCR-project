@@ -35,5 +35,3 @@ def clone_dist_numerical(x1, x2, x1_dagger, x2_dagger, omega, kr, M):
     tumor_probs = omega * probability_tumor(x1_dagger, x2_dagger, kr, M)
     lymph_probs = (1 - omega) * probability_lymph(x1, x2, kr, M)
     return tumor_probs + lymph_probs
-
-
