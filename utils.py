@@ -21,7 +21,7 @@ def probability_tumor(x1_dagger, x2_dagger, kr, M):
     integral = quad(integrand_tumor, 0, x1_dagger, args=(x1_dagger, x2_dagger, kr, M))[0]
     return factor_up_front * integral
 
-def clone_dist_numerical(x1, x2, x1_dagger, x2_dagger, omega, kr, M):
+def probability(x1, x2, x1_dagger, x2_dagger, omega, kr, M):
     tumor_probs = omega * probability_tumor(x1_dagger, x2_dagger, kr, M)
     lymph_probs = (1 - omega) * probability_lymph(x1, x2, kr, M)
     return tumor_probs + lymph_probs
