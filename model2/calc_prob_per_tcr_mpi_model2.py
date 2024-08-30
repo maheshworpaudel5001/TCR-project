@@ -50,7 +50,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate probabilities.")
     parser.add_argument("--patient_id", type=str, required=True, help="patient id")
     parser.add_argument(
-        "--o", type=str, default=os.getcwd(), help="Output filename: Give full path"
+        "--o",
+        type=str,
+        default=os.path.join(os.getcwd(), "output_probabilities"),
+        help="Output filename: Give full path. Otherwise defaults to output_probabilities.h5 at current working directory.",
     )
 
     args = parser.parse_args()
@@ -132,7 +135,11 @@ if __name__ == "__main__":
         with h5py.File(output_filename, "w") as f:
             f.create_dataset("results", data=results_array)
 
-        print("Results saved to HDF5 file:", output_filename)
+        print(
+            "Results saved to HDF5 file:",
+            output_filename,
+            " with a key called 'results'.",
+        )
         print("Full shape:", results_array.shape)
 
     # Finalize MPI
