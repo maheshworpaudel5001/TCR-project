@@ -3,7 +3,7 @@ import argparse
 import pandas as pd
 import numpy as np
 from mpi4py import MPI
-from probability import log_probability
+from model2.probability import log_probability
 import h5py
 
 
@@ -90,48 +90,57 @@ if __name__ == "__main__":
     scaled_kr_values = patient_data["scaled_kr"].values
     n0_values = patient_data["cdr3_count_x"].values
 
-    # Initialization
-    if rank == 0:
-        # Only the root process reads data and distributes to others
-        chunk_size = size
-        chunks_kr = [list(sublist) for sublist in np.array_split(scaled_kr_values, chunk_size)]  # type: ignore
-        chunks_n0 = [list(sublist) for sublist in np.array_split(n0_values, chunk_size)]  # type: ignore
+    if len(scaled_kr_values) > 10000:
+        splitted_scaled_kr_values = np.array_split(scaled_kr_values, 10)
+        splitted_n0_values = np.array_split(n0_values, 10)
     else:
-        chunks_kr = None
-        chunks_n0 = None
+        splitted_scaled_kr_values = [scaled_kr_values]
+        splitted_n0_values = [n0_values]
 
-    # Scatter chunked data each of comm.size length to processes in loops
-    scaled_kr_values_scattered = comm.scatter(chunks_kr, root=0)  # type: ignore
-    n0_values_scattered = comm.scatter(chunks_n0, root=0)  # type: ignore
+    all_results = []
+    for kr_chunk, n0_chunk in zip(splitted_scaled_kr_values, splitted_n0_values):
+        # Initialization
+        if rank == 0:
+            # Only the root process reads data and distributes to others
+            chunk_kr = np.array_split(kr_chunk, size)
+            chunk_n0 = np.array_split(n0_chunk, size)
+        else:
+            chunk_kr = None
+            chunk_n0 = None
 
-    # Parallel execution
-    results = []
-    for i in range(len(scaled_kr_values_scattered)):
-        local_results = calc_probs_parallel(
-            (
-                t_value,
-                n0_values_scattered[i],
-                n_max_value,
-                Lambda_value,
-                scaled_kr_values_scattered[i],
+        # Scatter chunked data each of comm.size length to processes in loops
+        chunk_kr_scattered = comm.scatter(chunk_kr, root=0)
+        n0_scattered = comm.scatter(chunk_n0, root=0)
+
+        # Parallel execution
+        results = []
+        for kr_value, n0_value in zip(chunk_kr_scattered, n0_scattered):
+            local_results = calc_probs_parallel(
+                (
+                    t_value,
+                    n0_value,
+                    n_max_value,
+                    Lambda_value,
+                    kr_value,
+                )
             )
-        )
-        results.append(local_results)
+            results.append(local_results)
+        all_results.extend(results)
 
     # Gather results outside the loop
-    results = comm.gather(results, root=0)
+    final_results = comm.gather(all_results, root=0)
 
     # Root process prints results
     if rank == 0:
         # Note that local_results itself is a list so results will be some nested list. We will just flatten the gathered results list.
-        results = [item for sublist in results for item in sublist]
+        final_results = [item for sublist in final_results for item in sublist]
 
         # Ensure the filename has the .h5 extension
         if not output_filename.endswith(".h5"):
             output_filename += ".h5"
 
         # Save as HDF5 file
-        results_array = np.array(results)
+        results_array = np.array(final_results)
         with h5py.File(output_filename, "w") as f:
             f.create_dataset("results", data=results_array)
 
