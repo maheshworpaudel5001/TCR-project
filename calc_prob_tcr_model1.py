@@ -3,7 +3,7 @@ import argparse
 import pandas as pd
 import numpy as np
 from mpi4py import MPI
-from probability import probability
+from model1.probability import probability
 import h5py
 
 
@@ -19,16 +19,6 @@ def calc_probs_parallel(args):
     x1, x2, x1_dagger, x2_dagger, omega, kr, M = args
     result = calc_probs(x1, x2, x1_dagger, x2_dagger, omega, kr, M)
     return result
-
-
-def process_subchunks(subchunk, x1, x2, x1_dagger, x2_dagger, omega, M):
-    results = []
-    for kr_value in subchunk:
-        local_results = calc_probs_parallel(
-            (x1, x2, x1_dagger, x2_dagger, omega, kr_value, M)
-        )
-        results.append(local_results)
-    return results
 
 
 if __name__ == "__main__":
@@ -109,48 +99,51 @@ if __name__ == "__main__":
     M_max_value = M_max_values.get(patient_id, 1000)
 
     scaled_kr_values = patient_data["scaled_kr"].values
-    if rank == 0:
-        chunked_scaled_kr_values = [
-            scaled_kr_values
-        ]  # Ensure it's a list for consistency
-        if len(scaled_kr_values) > 10000:
-            # Further divide each chunk into subchunks, divided into size chunks here
-            chunked_scaled_kr_values = np.array_split(scaled_kr_values, size)
-        else:
-            # Ensure the list has 'size' elements, even if some are empty
-            chunked_scaled_kr_values = np.array_split(scaled_kr_values, size)
+    if len(scaled_kr_values) > 10000:
+        splitted_scaled_kr_values = np.array_split(scaled_kr_values, 10)
     else:
-        chunked_scaled_kr_values = None
+        splitted_scaled_kr_values = [scaled_kr_values]  # put into list for consistency
 
-    chunked_scaled_kr_values_scattered = comm.scatter(chunked_scaled_kr_values, root=0)
+    # Then process each chunk
+    all_results = []
+    for kr_chunk in splitted_scaled_kr_values:
+        if rank == 0:
+            chunk_kr = np.array_split(kr_chunk, size)
+        else:
+            chunk_kr = None
 
-    results = []
-    for kr_chunk in chunked_scaled_kr_values_scattered:
-        sub_results = process_subchunks(
-            kr_chunk,
-            x1_value,
-            x2_value,
-            x1_dagger_value,
-            x2_dagger_value,
-            omega_value,
-            M_max_value,
-        )
-        results.extend(sub_results)
+        chunk_kr_scattered = comm.scatter(chunk_kr, root=0)
 
-    # Gather results from all processes
-    results = comm.gather(results, root=0)
+        results = []
+        for i, kr_value in enumerate(chunk_kr_scattered):
+            local_results = calc_probs_parallel(
+                (
+                    x1_value,
+                    x2_value,
+                    x1_dagger_value,
+                    x2_dagger_value,
+                    omega_value,
+                    kr_value,
+                    M_max_value,
+                )
+            )
+            results.append(local_results)
+        all_results.extend(results)
 
-    # Root process saves results
+    # Gather results outside the loop
+    final_results = comm.gather(all_results, root=0)
+
+    # Root process prints results
     if rank == 0:
-        # Flatten the gathered results list
-        results = [item for sublist in results for item in sublist]
+        # Note that local_results itself is a list so results will be some nested list. We will just flatten the gathered results list.
+        final_results = [item for sublist in final_results for item in sublist]
 
         # Ensure the filename has the .h5 extension
         if not output_filename.endswith(".h5"):
             output_filename += ".h5"
 
         # Save as HDF5 file
-        results_array = np.array(results)
+        results_array = np.array(final_results)
         with h5py.File(output_filename, "w") as f:
             f.create_dataset("results", data=results_array)
 
