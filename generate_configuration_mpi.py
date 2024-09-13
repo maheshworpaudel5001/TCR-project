@@ -11,7 +11,7 @@ def process_row(row, num_columns):
     selected_values = []
     for _ in range(50):
         selected_values.extend(
-            np.random.choice(np.arange(1, num_columns + 1), size=1000, p=row)
+            np.random.choice(np.arange(1, num_columns + 1), size=1000, p=row / sum(row))
         )
     return selected_values
 
@@ -48,10 +48,11 @@ if __name__ == "__main__":
     if rank == 0:
         # Load the .h5 file
         with h5py.File(input_file, "r") as f:
-            probability_array = f["results"][:]
+            probability_array = f["result"][:]
+            # probability_array =/
         num_columns = probability_array.shape[1]
         # Split the data among the available processes
-        data_split = np.array_split(probability_array, size)
+        data_split = np.array_split(probability_array, size)  # splits row wise
     else:
         data_split = None
         num_columns = None
