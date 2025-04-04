@@ -8,9 +8,9 @@ def ccf(data):
 
     Parameters:
     -----------
-    data : dict, list, or DataFrame
+    data : dict, list, 1D-array or DataFrame
         The input data can be a dictionary with clone sizes as keys and counts as values,
-        a list of clone sizes, or a dataframe with the first column which has clone sizes and second column which has counts.
+        a list of clone sizes, or a 1D-array of clone sizes or a dataframe with the first column which has clone sizes and second column which has counts.
 
     Returns:
     --------
@@ -25,12 +25,18 @@ def ccf(data):
         for item in data:
             counts[item] = counts.get(item, 0) + 1
         counts_df = pd.DataFrame(list(counts.items()), columns=["Clone Size", "Counts"])
+    elif isinstance(data, np.ndarray) and data.ndim == 1:
+        # Convert 1D-array to counts dictionary and then to dataframe
+        counts = {}
+        for item in data:
+            counts[item] = counts.get(item, 0) + 1
+        counts_df = pd.DataFrame(list(counts.items()), columns=["Clone Size", "Counts"])
     elif isinstance(data, pd.DataFrame):
         counts_df = data
         counts_df.columns = ["Clone Size", "Counts"]
     else:
         raise ValueError(
-            "Data should be either a dictionary, list, or dataframe. If dataframe, first column must have clone sizes and second column must have counts."
+            "Data should be either a dictionary, list, 1D-array or dataframe. If dataframe, first column must have clone sizes and second column must have counts."
         )
 
     # Convert Clone Size and Counts to integers

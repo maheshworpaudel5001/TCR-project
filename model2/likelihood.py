@@ -1,11 +1,13 @@
-import os
 import sys
-import numpy as np
-from concurrent.futures import ProcessPoolExecutor
-from probability import log_probability
 
-# Smallest positive float value
-eps = sys.float_info.min
+sys.path.append("/home/gddaslab/mxp140/tcr_project_git")
+import os
+import warnings
+import numpy as np
+from model2.probability import log_probability
+from concurrent.futures import ProcessPoolExecutor
+
+warnings.filterwarnings("ignore")
 
 
 def likelihood(params, t, initial_dist, final_dist, scaled_kr_values, verbose=False):
@@ -34,7 +36,8 @@ def likelihood(params, t, initial_dist, final_dist, scaled_kr_values, verbose=Fa
     neg_sum = -sum_log_probs
 
     if verbose:
-        print(f"Neg-logL:{neg_sum:.2f}     Lambda:{Lambda:.2f}")
+        print(f"Neg-logL:{neg_sum:.2f}")
+        print(f"Lambda:{Lambda:.2f}")
     return neg_sum
 
 

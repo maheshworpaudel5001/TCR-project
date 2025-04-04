@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append("/home/gddaslab/mxp140/tcr_project_git/")
+
 import os
 
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
@@ -45,7 +49,7 @@ def minimization(
                 f"Initial guess for parameter {i} is not within the bounds."
             )
 
-    logging.info("Minimization started")
+    logging.info(f"Initialized at: {initial_guess}")
     logging.info(f"Method: {method}")
 
     if method == "dual_annealing":
@@ -61,9 +65,21 @@ def minimization(
     elif method == "shgo":
         result = shgo(select_likelihood_function, bounds)
     elif method == "SLSQP":
-        result = minimize(
-            select_likelihood_function, initial_guess, bounds=bounds, method=method
-        )
+        maxiter = 100  # Initial max iterations
+
+        while True:
+            result = minimize(
+                select_likelihood_function,
+                initial_guess,
+                bounds=bounds,
+                method=method,
+                options={"maxiter": maxiter},
+            )
+
+            if result.success:
+                break  # Exit the loop if minimization is successful
+            else:
+                maxiter += 100  # Increment maxiter by 100 if not successful
     elif method == "PSO":
         lb = [b[0] for b in bounds]
         ub = [b[1] for b in bounds]

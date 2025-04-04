@@ -1,3 +1,6 @@
+import sys
+
+sys.path.append("/home/gddaslab/mxp140/tcr_project_git")
 import os
 import warnings
 import numpy as np
@@ -8,13 +11,14 @@ warnings.filterwarnings("ignore")
 
 
 def likelihood(params, clone_count_values, scaled_kr_values, verbose=False):
-    x1, x2, x2_dagger, omega = params  # We set x1==x1_dagger.
+    x1, x2, x1_dagger, x2_dagger, omega = params
     M_values = clone_count_values
     n = len(clone_count_values)
 
     # Create arrays once
     x1_values = np.full(n, x1)
     x2_values = np.full(n, x2)
+    x1_dagger_values = np.full(n, x1_dagger)
     x2_dagger_values = np.full(n, x2_dagger)
     omega_values = np.full(n, omega)
 
@@ -25,7 +29,7 @@ def likelihood(params, clone_count_values, scaled_kr_values, verbose=False):
                 probability,
                 x1_values,
                 x2_values,
-                x1_values,
+                x1_dagger_values,
                 x2_dagger_values,
                 omega_values,
                 scaled_kr_values,
@@ -42,6 +46,7 @@ def likelihood(params, clone_count_values, scaled_kr_values, verbose=False):
         print(f"Neg-logL: {neg_sum:.8f}")
         print(f"x1: {x1:.8f}")
         print(f"x2: {x2:.8f}")
+        print(f"x1_dagger: {x1_dagger:.8f}")
         print(f"x2_dagger: {x2_dagger:.8f}")
         print(f"omega: {omega:.8f}")
         print(f"--" * 80)
@@ -50,7 +55,7 @@ def likelihood(params, clone_count_values, scaled_kr_values, verbose=False):
 
 if __name__ == "__main__":
     # Sample parameters
-    params = (0.5, 1.0, 1.5, 0.1)
+    params = (0.5, 1.0, 1.5, 1.5, 0.1)
 
     # Sample data
     clone_count_values = np.array([10, 20, 30, 40, 50] * 100)
